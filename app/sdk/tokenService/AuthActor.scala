@@ -1,12 +1,11 @@
-package actors
+package sdk.tokenService
 
-import akka.actor.{Props, Actor}
+import akka.actor.{Actor, Props}
 import play.api.libs.Codecs
+import sdk.{AuthCookie, AuthToken}
 
-case class AuthCookie(value: String) extends AnyVal
-case class AuthToken(token: String) extends AnyVal
 case class GenerateToken(cookie: AuthCookie)
-case class LookupAuthCookie(token: AuthToken)
+case class LookupCookie(token: AuthToken)
 
 object AuthActor {
   def props = Props(new AuthActor)
@@ -22,7 +21,7 @@ class AuthActor extends Actor {
       tokenMap += token -> cookie
 
       sender ! token
-    case LookupAuthCookie(token) =>
+    case LookupCookie(token) =>
       sender ! tokenMap.get(token)
   }
 }
