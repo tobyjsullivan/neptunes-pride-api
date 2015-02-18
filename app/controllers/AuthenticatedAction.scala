@@ -12,35 +12,28 @@ object AuthenticatedAction {
     request.headers.get("X-Auth-Token").map(AuthToken)
   }
 
+  private val failureResponse =
+    Unauthorized(Json.obj(
+      "error" -> Json.obj(
+        "message" -> "Login failed."
+      )
+    ))
+
   def apply[T](block: (Request[AnyContent], NPClient) => Result): Action[AnyContent] = Action { request =>
     val oToken = extractToken(request)
-
-    oToken match {
-      case None =>
-        Unauthorized(Json.obj(
-          "error" -> Json.obj(
-            "message" -> "Login failed."
-          )
-        ))
-      case Some(token) =>
-        block(request, new NPClient(token))
+    oToken.map { token =>
+      block(request, new NPClient(token))
+    }.getOrElse {
+      failureResponse
     }
   }
 
   def async[T](block: (Request[AnyContent], NPClient) => Future[Result])(implicit ec: ExecutionContext): Action[AnyContent] = Action.async { request =>
     val oToken = extractToken(request)
-
-    oToken match {
-      case None =>
-        Future {
-          Unauthorized(Json.obj(
-            "error" -> Json.obj(
-              "message" -> "Login failed."
-            )
-          ))
-        }
-      case Some(token) =>
-        block(request, new NPClient(token))
+    oToken.map { token =>
+      block(request, new NPClient(token))
+    }.getOrElse {
+      Future(failureResponse)
     }
   }
 }
