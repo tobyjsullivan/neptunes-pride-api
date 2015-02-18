@@ -3,3 +3,4 @@
 # ~~~~
 
 POST        /login        controllers.Authentication.login
+GET         /games        controllers.Games.index
