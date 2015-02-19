@@ -4,6 +4,7 @@ import akka.pattern.ask
 import akka.util.Timeout
 import play.api.libs.concurrent.Akka
 import play.api.Play.current
+import sdk.exception.InvalidTokenException
 import sdk.{AuthCookie, AuthToken}
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -20,6 +21,6 @@ object TokenService {
   def lookupCookie(token: AuthToken)(implicit ec: ExecutionContext): Future[AuthCookie] =
     for(
       oCookie <- (authActor ? LookupCookie(token)).mapTo[Option[AuthCookie]];
-      cookie <- Future(oCookie.get)
+      cookie <- Future(oCookie.getOrElse(throw new InvalidTokenException()))
     ) yield cookie
 }
