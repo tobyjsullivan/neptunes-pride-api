@@ -8,9 +8,17 @@ import scala.concurrent.ExecutionContext.Implicits.global
 object Games extends Controller {
 
   def index = AuthenticatedAction.async { (request, client) =>
-    val fGames = client.openGames()
+    val fGames = client.getOpenGames()
 
     fGames.map { game =>
+      Ok(Json.obj("result" -> game))
+    }
+  }
+
+  def read(gameId: Long) = AuthenticatedAction.async { (request, client) =>
+    val fGameDetails = client.getGameDetails(gameId)
+
+    fGameDetails.map { game =>
       Ok(Json.obj("result" -> game))
     }
   }
