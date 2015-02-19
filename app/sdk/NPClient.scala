@@ -79,10 +79,10 @@ class NPClient(token: AuthToken) {
 
       jsGames.value.toList.map { jsonGame =>
         val name = (jsonGame \ "name").as[String]
-        val number = (jsonGame \ "number").as[String]
+        val gameId = (jsonGame \ "number").as[String].toLong
         val version = (jsonGame \ "version").as[String].toInt
 
-        Game(name, number, version)
+        Game(gameId, name, version)
       }
 
     }
