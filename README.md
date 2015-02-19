@@ -10,7 +10,8 @@ curl -X POST http://localhost:9000/login --data 'username=YOUR_USERNAME&password
 For all other requests, include your auth token in the `X-Auth-Token` header.
 
 ```bash
-curl http://localhost:9000/games -H "X-Auth-Token: 48d4bdbc98e64cc5d38fc361e6d9a39f"
+curl http://localhost:9000/games -H 'X-Auth-Token: 48d4bdbc98e64cc5d38fc361e6d9a39f'
+curl http://localhost:9000/games/5536910481031168 -H 'X-Auth-Token: 48d4bdbc98e64cc5d38fc361e6d9a39f'
 ```
 
 For best results, deploy to Heroku. Let me know how that goes.
