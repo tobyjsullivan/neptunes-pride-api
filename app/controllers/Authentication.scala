@@ -9,6 +9,7 @@ import sdk.NPClient
 import scala.concurrent.ExecutionContext.Implicits.global
 
 object Authentication extends Controller {
+
   case class LoginData(username: String, password: String)
 
   val loginForm = Form(
@@ -24,11 +25,9 @@ object Authentication extends Controller {
     val fAuthToken = NPClient.exchangeForAuthToken(loginData.username, loginData.password)
 
     fAuthToken.map { token =>
-      val jsonResult = Json.obj(
+      Ok(Json.obj(
         "auth-token" -> token.token
-      )
-
-      Ok(jsonResult)
+      ))
     }.recover {
       case _ =>
         Unauthorized(Json.obj(

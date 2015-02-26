@@ -10,23 +10,22 @@ import scala.concurrent.{ExecutionContext, Future}
 
 object NPClient {
   val rootUrl = "http://triton.ironhelmet.com"
-  val authServiceUrl = rootUrl + "/arequest"
-  val metadataServiceUrl = rootUrl + "/mrequest"
-  val gameServiceUrl = rootUrl + "/grequest"
+  val authServiceUrl = s"$rootUrl/arequest"
+  val metadataServiceUrl = s"$rootUrl/mrequest"
+  val gameServiceUrl = s"$rootUrl/grequest"
 
   case class PlayerInfo(games: List[Game])
   case class UniverseReport(game: Game)
 
   def exchangeForAuthToken(username: String, password: String)(implicit ec: ExecutionContext): Future[AuthToken] = {
-    for (
-      oCookie <- fetchAuthCookie(username, password);
-      cookie <- Future(oCookie.get);
-      token <- TokenService.getToken(cookie)
-    ) yield token
+    for {
+      oCookie <- fetchAuthCookie(username, password)
+      token <- TokenService.getToken(oCookie)
+    } yield token
   }
 
   private def fetchAuthCookie(username: String, password: String)(implicit ec: ExecutionContext): Future[Option[AuthCookie]] = {
-    val loginUrl = authServiceUrl+"/login"
+    val loginUrl = s"$authServiceUrl/login"
 
     val data = Map(
       "type" -> Seq("login"),
@@ -34,12 +33,11 @@ object NPClient {
       "password" -> Seq(password)
     )
 
-    val fResponse = postFormData(loginUrl, data, None)
-
-    fResponse.map { response =>
-      val oAuthCookie = response.cookie("auth")
-
-      oAuthCookie.flatMap(_.value).map { cookieValue =>
+    postFormData(loginUrl, data, None).map { response =>
+      for {
+        authCookie <- response.cookie("auth")
+        cookieValue <- authCookie.value
+      } yield {
         AuthCookie(cookieValue)
       }
     }
@@ -49,65 +47,55 @@ object NPClient {
     val holder: WSRequestHolder = WS.url(url)
       .withHeaders("Content-Type" -> "application/x-www-form-urlencoded; charset=UTF-8")
 
-    val authedHolder =
-      if (oCookie.isDefined)
-        holder.withHeaders("Cookie" -> ("auth="+oCookie.get.value))
-      else
-        holder
+    val authedHolder = oCookie match {
+      case Some(cookie) => holder.withHeaders("Cookie" -> s"auth=${cookie.value}")
+      case None => holder
+    }
 
     authedHolder.post(data)
   }
 }
 
 class NPClient(token: AuthToken) {
-  import NPClient._
+  import sdk.NPClient._
 
   def getOpenGames()(implicit ec: ExecutionContext): Future[List[Game]] = {
-    for(
-      cookie <- TokenService.lookupCookie(token);
+    for {
+      cookie <- TokenService.lookupCookie(token)
       playerInfo <- fetchPlayerInfo(cookie)
-    ) yield playerInfo.games
+    } yield playerInfo.games
   }
 
   def getGameDetails(gameId: Long)(implicit ec: ExecutionContext): Future[Game] = {
-    for(
-      cookie <- TokenService.lookupCookie(token);
+    for {
+      cookie <- TokenService.lookupCookie(token)
       universeReport <- fetchFullUniverseReport(gameId, cookie)
-    ) yield universeReport.game
+    } yield universeReport.game
   }
 
   private def fetchPlayerInfo(cookie: AuthCookie)(implicit ec: ExecutionContext): Future[PlayerInfo] = {
-    val initEndpointUrl = NPClient.metadataServiceUrl + "/init_player"
+    val initEndpointUrl = s"$metadataServiceUrl/init_player"
 
     val data = Map(
       "type" -> Seq("init_player")
     )
 
-    val fResponse = NPClient.postFormData(initEndpointUrl, data, Some(cookie))
-
-    fResponse.map { response =>
+    postFormData(initEndpointUrl, data, Some(cookie)).map { response =>
       val jsGames = (response.json \\ "open_games").head.as[JsArray]
 
-
-      val games = jsGames.value.toList.map { jsonGame =>
-        val name = (jsonGame \ "name").as[String]
-        val gameId = (jsonGame \ "number").as[String].toLong
-
+      val games = jsGames.value.map { jsonGame =>
         Game(
-          gameId = gameId,
-          name = name,
-          details = None,
-          status = None,
-          player = None
+          gameId = (jsonGame \ "number").as[String].toLong,
+          name = (jsonGame \ "name").as[String]
         )
       }
 
-      PlayerInfo(games)
+      PlayerInfo(games.toList)
     }
   }
 
   private def fetchFullUniverseReport(gameId: Long, cookie: AuthCookie)(implicit ec: ExecutionContext): Future[UniverseReport] = {
-    val orderEndpointUrl = NPClient.gameServiceUrl + "/order"
+    val orderEndpointUrl = s"$gameServiceUrl/order"
 
     val data = Map(
       "type" -> Seq("order"),
@@ -116,9 +104,7 @@ class NPClient(token: AuthToken) {
       "game_number" -> Seq(gameId.toString)
     )
 
-    val fResponse = NPClient.postFormData(orderEndpointUrl, data, Some(cookie))
-
-    fResponse.map { response =>
+    postFormData(orderEndpointUrl, data, Some(cookie)).map { response =>
       val jsReport = response.json \ "report"
 
       val gameName = (jsReport \ "name").as[String]

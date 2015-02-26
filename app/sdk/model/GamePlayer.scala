@@ -1,16 +1,12 @@
 package sdk.model
 
-import play.api.libs.functional.syntax._
-import play.api.libs.json.{JsPath, Writes}
-
-object GamePlayer {
-  implicit val gamePlayerWrites: Writes[GamePlayer] = (
-    (JsPath \ "playerId").write[Int] and
-      (JsPath \ "admin").write[Boolean]
-    )(unlift(GamePlayer.unapply))
-}
+import play.api.libs.json._
 
 case class GamePlayer(
-                     playerId: Int,
-                     admin: Boolean
-                       )
+  playerId: Int,
+  admin: Boolean
+)
+
+object GamePlayer {
+  implicit val fmt: Format[GamePlayer] = Json.format[GamePlayer]
+}
