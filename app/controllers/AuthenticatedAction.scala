@@ -3,8 +3,8 @@ package controllers
 import controllers.Authentication._
 import play.api.libs.json.Json
 import play.api.mvc._
-import sdk.{NPClient, AuthToken}
 import sdk.exception.InvalidTokenException
+import sdk.{AuthToken, NPClient}
 
 import scala.concurrent._
 import scala.util.Try
@@ -29,10 +29,8 @@ object AuthenticatedAction {
     ))
 
   def apply[T](block: (Request[AnyContent], NPClient) => Result): Action[AnyContent] = Action { request =>
-    val oToken = extractToken(request)
-    oToken.map { token =>
-      val tResult = Try(block(request, new NPClient(token)))
-      tResult.recover {
+    extractToken(request).map { token =>
+      Try(block(request, new NPClient(token))).recover {
         case e: InvalidTokenException =>
           responseInvalidToken
       }.get
@@ -42,14 +40,13 @@ object AuthenticatedAction {
   }
 
   def async[T](block: (Request[AnyContent], NPClient) => Future[Result])(implicit ec: ExecutionContext): Action[AnyContent] = Action.async { request =>
-    val oToken = extractToken(request)
-    oToken.map { token =>
+    extractToken(request).map { token =>
       block(request, new NPClient(token)).recover {
         case e: InvalidTokenException =>
           responseInvalidToken
       }
     }.getOrElse {
-      Future(responseTokenRequired)
+      Future.successful(responseTokenRequired)
     }
   }
 }
