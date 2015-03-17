@@ -76,7 +76,7 @@ class NPClient(token: AuthToken)(implicit webServiceProvider: WebService = PlayW
     } yield universeReport.game
   }
 
-  def submitTurn(gameId: Long)(implicit ec: ExecutionContext): Future[Boolean] = {
+  def submitTurn(gameId: Long)(implicit ec: ExecutionContext): Future[Unit] = {
     tokenServiceProvider.lookupCookie(token).flatMap { cookie =>
       val data = Map(
         "type" -> Seq("order"),
@@ -86,9 +86,7 @@ class NPClient(token: AuthToken)(implicit webServiceProvider: WebService = PlayW
       )
 
       postFormData(orderEndpointUrl, data, Some(cookie))
-    } map { response =>
-      response.status == 200
-    }
+    }.mapTo[Unit]
   }
 
   private def fetchPlayerInfo(cookie: AuthCookie)(implicit ec: ExecutionContext): Future[PlayerInfo] = {

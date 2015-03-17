@@ -27,8 +27,8 @@ object Games extends Controller {
   def submitTurn(gameId: Long) = AuthenticatedAction.async { (request, client) =>
     val fSubmitRequest = client.submitTurn(gameId)
 
-    fSubmitRequest.map { ok =>
-      Ok(Json.obj("result" -> ok))
+    fSubmitRequest.map { _ =>
+      Ok(Json.obj("result" -> "ok"))
     }
   }
 }
