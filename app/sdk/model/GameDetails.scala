@@ -12,7 +12,7 @@ case class GameDetails(
   starsForVictory: Int,
   tradeCost: Int,
   tradeScanned: Boolean,
-  fleetSpeed: Double
+  carrierSpeed: Double
 )
 
 object GameDetails {
