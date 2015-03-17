@@ -59,6 +59,8 @@ object NPClient {
 class NPClient(token: AuthToken) {
   import sdk.NPClient._
 
+  private val orderEndpointUrl = s"$gameServiceUrl/order"
+
   def getOpenGames()(implicit ec: ExecutionContext): Future[List[Game]] = {
     for {
       cookie <- TokenService.lookupCookie(token)
@@ -71,6 +73,21 @@ class NPClient(token: AuthToken) {
       cookie <- TokenService.lookupCookie(token)
       universeReport <- fetchFullUniverseReport(gameId, cookie)
     } yield universeReport.game
+  }
+
+  def submitTurn(gameId: Long)(implicit ec: ExecutionContext): Future[Boolean] = {
+    TokenService.lookupCookie(token).flatMap { cookie =>
+      val data = Map(
+        "type" -> Seq("order"),
+        "order" -> Seq("force_ready"),
+        "version" -> Seq("7"),
+        "game_number" -> Seq(gameId.toString)
+      )
+
+      postFormData(orderEndpointUrl, data, Some(cookie))
+    } map { response =>
+      response.status == 200
+    }
   }
 
   private def fetchPlayerInfo(cookie: AuthCookie)(implicit ec: ExecutionContext): Future[PlayerInfo] = {
@@ -95,8 +112,6 @@ class NPClient(token: AuthToken) {
   }
 
   private def fetchFullUniverseReport(gameId: Long, cookie: AuthCookie)(implicit ec: ExecutionContext): Future[UniverseReport] = {
-    val orderEndpointUrl = s"$gameServiceUrl/order"
-
     val data = Map(
       "type" -> Seq("order"),
       "order" -> Seq("full_universe_report"),

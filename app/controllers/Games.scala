@@ -1,9 +1,10 @@
 package controllers
 
-import play.api.libs.json.Json
+import play.api.libs.json.{JsNull, Json}
 import play.api.mvc._
 
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 
 object Games extends Controller {
 
@@ -20,6 +21,14 @@ object Games extends Controller {
 
     fGameDetails.map { game =>
       Ok(Json.obj("result" -> game))
+    }
+  }
+
+  def submitTurn(gameId: Long) = AuthenticatedAction.async { (request, client) =>
+    val fSubmitRequest = client.submitTurn(gameId)
+
+    fSubmitRequest.map { ok =>
+      Ok(Json.obj("result" -> ok))
     }
   }
 }
