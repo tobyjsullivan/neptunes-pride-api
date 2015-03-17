@@ -1,8 +1,8 @@
 package sdk
 
 import play.api.libs.json.{JsValue, JsArray}
-import play.api.libs.ws.{WSResponse, WS, WSRequestHolder}
-import play.api.Play.current
+import sdk.http.{RequestHolder, Response, WebService}
+import sdk.http.impl.PlayWebService
 import sdk.model.{GamePlayer, GameStatus, GameDetails, Game}
 import sdk.tokenService.TokenService
 
@@ -17,14 +17,14 @@ object NPClient {
   case class PlayerInfo(games: List[Game])
   case class UniverseReport(game: Game)
 
-  def exchangeForAuthToken(username: String, password: String)(implicit ec: ExecutionContext): Future[AuthToken] = {
+  def exchangeForAuthToken(username: String, password: String, ws: WebService = PlayWebService)(implicit ec: ExecutionContext): Future[AuthToken] = {
     for {
-      oCookie <- fetchAuthCookie(username, password)
+      oCookie <- fetchAuthCookie(username, password)(ws, ec)
       token <- TokenService.getToken(oCookie)
     } yield token
   }
 
-  private def fetchAuthCookie(username: String, password: String)(implicit ec: ExecutionContext): Future[Option[AuthCookie]] = {
+  private def fetchAuthCookie(username: String, password: String)(implicit webServiceProvider: WebService, ec: ExecutionContext): Future[Option[AuthCookie]] = {
     val loginUrl = s"$authServiceUrl/login"
 
     val data = Map(
@@ -43,8 +43,8 @@ object NPClient {
     }
   }
 
-  private def postFormData(url: String, data: Map[String, Seq[String]], oCookie: Option[AuthCookie]): Future[WSResponse] = {
-    val holder: WSRequestHolder = WS.url(url)
+  private def postFormData(url: String, data: Map[String, Seq[String]], oCookie: Option[AuthCookie])(implicit webServiceProvider: WebService, ec: ExecutionContext): Future[Response] = {
+    val holder: RequestHolder = webServiceProvider.url(url)
       .withHeaders("Content-Type" -> "application/x-www-form-urlencoded; charset=UTF-8")
 
     val authedHolder = oCookie match {
@@ -56,7 +56,7 @@ object NPClient {
   }
 }
 
-class NPClient(token: AuthToken) {
+class NPClient(token: AuthToken)(implicit webServiceProvider: WebService = PlayWebService) {
   import sdk.NPClient._
 
   private val orderEndpointUrl = s"$gameServiceUrl/order"
