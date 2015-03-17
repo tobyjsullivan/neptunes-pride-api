@@ -149,7 +149,7 @@ class NPClient(token: AuthToken)(implicit webServiceProvider: WebService = PlayW
       starsForVictory = (jsReport \ "stars_for_victory").as[Int],
       tradeCost = (jsReport \ "trade_cost").as[Int],
       tradeScanned = (jsReport \ "trade_scanned").as[Int] != 0,
-      fleetSpeed = (jsReport \ "fleet_speed").as[Double]
+      carrierSpeed = (jsReport \ "fleet_speed").as[Double]
     )
 
   private def parseGameStatus(jsReport: JsValue): GameStatus =
