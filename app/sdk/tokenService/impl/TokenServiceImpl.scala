@@ -5,7 +5,7 @@ import akka.util.Timeout
 import play.api.Play.current
 import play.api.libs.concurrent.Akka
 import sdk.exception.InvalidTokenException
-import sdk.tokenService.{TokenService, AuthActor}
+import sdk.tokenService.{AuthActor, TokenService}
 import sdk.{AuthCookie, AuthToken}
 
 import scala.concurrent.duration._

@@ -1,9 +1,9 @@
 package sdk
 
-import play.api.libs.json.{JsValue, JsArray}
-import sdk.http.{RequestHolder, Response, WebService}
+import play.api.libs.json.{JsArray, JsValue}
 import sdk.http.impl.PlayWebService
-import sdk.model.{GamePlayer, GameStatus, GameDetails, Game}
+import sdk.http.{RequestHolder, Response, WebService}
+import sdk.model.{Game, GameDetails, GamePlayer, GameStatus}
 import sdk.tokenService.TokenService
 import sdk.tokenService.impl.TokenServiceImpl
 

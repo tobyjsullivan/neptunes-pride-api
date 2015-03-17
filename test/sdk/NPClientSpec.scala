@@ -6,8 +6,8 @@ import org.scalatest._
 import org.scalatest.mock.MockitoSugar
 import sdk.mocks.{MockTokenServiceProvider, MockWebServiceProvider}
 
-import scala.concurrent.{Future, ExecutionContext}
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.{ExecutionContext, Future}
 
 class NPClientSpec extends FlatSpec with Matchers with MockitoSugar with MockTokenServiceProvider with MockWebServiceProvider {
   "submitTurn" should "send a post command to the server" in {

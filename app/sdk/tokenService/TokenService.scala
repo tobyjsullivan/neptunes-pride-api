@@ -1,8 +1,8 @@
 package sdk.tokenService
 
-import sdk.{AuthToken, AuthCookie}
+import sdk.{AuthCookie, AuthToken}
 
-import scala.concurrent.{Future, ExecutionContext}
+import scala.concurrent.{ExecutionContext, Future}
 
 trait TokenService {
   def getToken(oCookie: Option[AuthCookie])(implicit ec: ExecutionContext): Future[AuthToken]

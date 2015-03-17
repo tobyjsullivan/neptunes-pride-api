@@ -1,7 +1,7 @@
 package sdk.http.impl
 
 import play.api.libs.ws._
-import sdk.http.{Response, RequestHolder}
+import sdk.http.{RequestHolder, Response}
 
 import scala.concurrent.{ExecutionContext, Future}
 
