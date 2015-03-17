@@ -1,10 +1,11 @@
 package sdk
 
-import play.api.libs.json.{JsValue, JsArray}
-import play.api.libs.ws.{WSResponse, WS, WSRequestHolder}
-import play.api.Play.current
-import sdk.model.{GamePlayer, GameStatus, GameDetails, Game}
+import play.api.libs.json.{JsArray, JsValue}
+import sdk.http.impl.PlayWebService
+import sdk.http.{RequestHolder, Response, WebService}
+import sdk.model.{Game, GameDetails, GamePlayer, GameStatus}
 import sdk.tokenService.TokenService
+import sdk.tokenService.impl.TokenServiceImpl
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -17,14 +18,14 @@ object NPClient {
   case class PlayerInfo(games: List[Game])
   case class UniverseReport(game: Game)
 
-  def exchangeForAuthToken(username: String, password: String)(implicit ec: ExecutionContext): Future[AuthToken] = {
+  def exchangeForAuthToken(username: String, password: String, ws: WebService = PlayWebService, ts: TokenService = TokenServiceImpl)(implicit ec: ExecutionContext): Future[AuthToken] = {
     for {
-      oCookie <- fetchAuthCookie(username, password)
-      token <- TokenService.getToken(oCookie)
+      oCookie <- fetchAuthCookie(username, password)(ws, ec)
+      token <- ts.getToken(oCookie)
     } yield token
   }
 
-  private def fetchAuthCookie(username: String, password: String)(implicit ec: ExecutionContext): Future[Option[AuthCookie]] = {
+  private def fetchAuthCookie(username: String, password: String)(implicit webServiceProvider: WebService, ec: ExecutionContext): Future[Option[AuthCookie]] = {
     val loginUrl = s"$authServiceUrl/login"
 
     val data = Map(
@@ -43,8 +44,8 @@ object NPClient {
     }
   }
 
-  private def postFormData(url: String, data: Map[String, Seq[String]], oCookie: Option[AuthCookie]): Future[WSResponse] = {
-    val holder: WSRequestHolder = WS.url(url)
+  private def postFormData(url: String, data: Map[String, Seq[String]], oCookie: Option[AuthCookie])(implicit webServiceProvider: WebService, ec: ExecutionContext): Future[Response] = {
+    val holder: RequestHolder = webServiceProvider.url(url)
       .withHeaders("Content-Type" -> "application/x-www-form-urlencoded; charset=UTF-8")
 
     val authedHolder = oCookie match {
@@ -56,21 +57,36 @@ object NPClient {
   }
 }
 
-class NPClient(token: AuthToken) {
+class NPClient(token: AuthToken)(implicit webServiceProvider: WebService = PlayWebService, tokenServiceProvider: TokenService = TokenServiceImpl) {
   import sdk.NPClient._
+
+  private val orderEndpointUrl = s"$gameServiceUrl/order"
 
   def getOpenGames()(implicit ec: ExecutionContext): Future[List[Game]] = {
     for {
-      cookie <- TokenService.lookupCookie(token)
+      cookie <- tokenServiceProvider.lookupCookie(token)
       playerInfo <- fetchPlayerInfo(cookie)
     } yield playerInfo.games
   }
 
   def getGameDetails(gameId: Long)(implicit ec: ExecutionContext): Future[Game] = {
     for {
-      cookie <- TokenService.lookupCookie(token)
+      cookie <- tokenServiceProvider.lookupCookie(token)
       universeReport <- fetchFullUniverseReport(gameId, cookie)
     } yield universeReport.game
+  }
+
+  def submitTurn(gameId: Long)(implicit ec: ExecutionContext): Future[Unit] = {
+    tokenServiceProvider.lookupCookie(token).flatMap { cookie =>
+      val data = Map(
+        "type" -> Seq("order"),
+        "order" -> Seq("force_ready"),
+        "version" -> Seq("7"),
+        "game_number" -> Seq(gameId.toString)
+      )
+
+      postFormData(orderEndpointUrl, data, Some(cookie))
+    }.mapTo[Unit]
   }
 
   private def fetchPlayerInfo(cookie: AuthCookie)(implicit ec: ExecutionContext): Future[PlayerInfo] = {
@@ -95,8 +111,6 @@ class NPClient(token: AuthToken) {
   }
 
   private def fetchFullUniverseReport(gameId: Long, cookie: AuthCookie)(implicit ec: ExecutionContext): Future[UniverseReport] = {
-    val orderEndpointUrl = s"$gameServiceUrl/order"
-
     val data = Map(
       "type" -> Seq("order"),
       "order" -> Seq("full_universe_report"),

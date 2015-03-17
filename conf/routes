@@ -2,6 +2,10 @@
 # This file defines all application routes (Higher priority routes first)
 # ~~~~
 
+# Account actions
 POST        /login                controllers.Authentication.login
 GET         /games                controllers.Games.index
+
+# In-game actions
 GET         /games/:gameId        controllers.Games.read(gameId: Long)
+POST        /games/:gameId        controllers.Games.submitTurn(gameId: Long)

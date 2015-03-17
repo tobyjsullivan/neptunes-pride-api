@@ -8,5 +8,6 @@ scalaVersion := "2.11.5"
 
 libraryDependencies ++= Seq(
   cache,
-  ws
+  ws,
+  "org.scalatest" % "scalatest_2.11" % "2.2.4"
 )
