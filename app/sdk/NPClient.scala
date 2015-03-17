@@ -5,6 +5,7 @@ import sdk.http.{RequestHolder, Response, WebService}
 import sdk.http.impl.PlayWebService
 import sdk.model.{GamePlayer, GameStatus, GameDetails, Game}
 import sdk.tokenService.TokenService
+import sdk.tokenService.impl.TokenServiceImpl
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -17,10 +18,10 @@ object NPClient {
   case class PlayerInfo(games: List[Game])
   case class UniverseReport(game: Game)
 
-  def exchangeForAuthToken(username: String, password: String, ws: WebService = PlayWebService)(implicit ec: ExecutionContext): Future[AuthToken] = {
+  def exchangeForAuthToken(username: String, password: String, ws: WebService = PlayWebService, ts: TokenService = TokenServiceImpl)(implicit ec: ExecutionContext): Future[AuthToken] = {
     for {
       oCookie <- fetchAuthCookie(username, password)(ws, ec)
-      token <- TokenService.getToken(oCookie)
+      token <- ts.getToken(oCookie)
     } yield token
   }
 
@@ -56,27 +57,27 @@ object NPClient {
   }
 }
 
-class NPClient(token: AuthToken)(implicit webServiceProvider: WebService = PlayWebService) {
+class NPClient(token: AuthToken)(implicit webServiceProvider: WebService = PlayWebService, tokenServiceProvider: TokenService = TokenServiceImpl) {
   import sdk.NPClient._
 
   private val orderEndpointUrl = s"$gameServiceUrl/order"
 
   def getOpenGames()(implicit ec: ExecutionContext): Future[List[Game]] = {
     for {
-      cookie <- TokenService.lookupCookie(token)
+      cookie <- tokenServiceProvider.lookupCookie(token)
       playerInfo <- fetchPlayerInfo(cookie)
     } yield playerInfo.games
   }
 
   def getGameDetails(gameId: Long)(implicit ec: ExecutionContext): Future[Game] = {
     for {
-      cookie <- TokenService.lookupCookie(token)
+      cookie <- tokenServiceProvider.lookupCookie(token)
       universeReport <- fetchFullUniverseReport(gameId, cookie)
     } yield universeReport.game
   }
 
   def submitTurn(gameId: Long)(implicit ec: ExecutionContext): Future[Boolean] = {
-    TokenService.lookupCookie(token).flatMap { cookie =>
+    tokenServiceProvider.lookupCookie(token).flatMap { cookie =>
       val data = Map(
         "type" -> Seq("order"),
         "order" -> Seq("force_ready"),
