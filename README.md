@@ -14,4 +14,4 @@ curl https://neptunes-pride-api.herokuapp.com/games -H 'X-Auth-Token: 48d4bdbc98
 curl https://neptunes-pride-api.herokuapp.com/games/5536910481031168 -H 'X-Auth-Token: 48d4bdbc98e64cc5d38fc361e6d9a39f'
 ```
 
-For best results, deploy to Heroku. Let me know how that goes.
+You can find a live copy of the API running at [neptunes-pride-api.herokuapp.com](https://neptunes-pride-api.herokuapp.com).
