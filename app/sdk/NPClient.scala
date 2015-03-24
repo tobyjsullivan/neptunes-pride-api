@@ -1,9 +1,9 @@
 package sdk
 
-import play.api.libs.json.{JsArray, JsValue}
+import play.api.libs.json.{JsUndefined, JsArray, JsValue}
 import sdk.http.impl.PlayWebService
 import sdk.http.{RequestHolder, Response, WebService}
-import sdk.model.{Game, GameDetails, GamePlayer, GameStatus}
+import sdk.model._
 import sdk.tokenService.TokenService
 import sdk.tokenService.impl.TokenServiceImpl
 
@@ -16,7 +16,7 @@ object NPClient {
   val gameServiceUrl = s"$rootUrl/grequest"
 
   case class PlayerInfo(games: List[Game])
-  case class UniverseReport(game: Game)
+  case class UniverseReport(game: Game, players: Seq[Player])
 
   def exchangeForAuthToken(username: String, password: String, ws: WebService = PlayWebService, ts: TokenService = TokenServiceImpl)(implicit ec: ExecutionContext): Future[AuthToken] = {
     for {
@@ -52,7 +52,6 @@ object NPClient {
       case Some(cookie) => holder.withHeaders("Cookie" -> s"auth=${cookie.value}")
       case None => holder
     }
-
     authedHolder.post(data)
   }
 }
@@ -74,6 +73,13 @@ class NPClient(token: AuthToken)(implicit webServiceProvider: WebService = PlayW
       cookie <- tokenServiceProvider.lookupCookie(token)
       universeReport <- fetchFullUniverseReport(gameId, cookie)
     } yield universeReport.game
+  }
+
+  def getPlayerDetails(gameId: Long)(implicit ec: ExecutionContext): Future[Seq[Player]] = {
+    for {
+      cookie <- tokenServiceProvider.lookupCookie(token)
+      universeReport <- fetchFullUniverseReport(gameId, cookie)
+    } yield universeReport.players
   }
 
   def submitTurn(gameId: Long)(implicit ec: ExecutionContext): Future[Unit] = {
@@ -120,7 +126,6 @@ class NPClient(token: AuthToken)(implicit webServiceProvider: WebService = PlayW
 
     postFormData(orderEndpointUrl, data, Some(cookie)).map { response =>
       val jsReport = response.json \ "report"
-
       val gameName = (jsReport \ "name").as[String]
       val gameDetails = parseGameDetails(jsReport)
       val gameStatus = parseGameStatus(jsReport)
@@ -134,7 +139,9 @@ class NPClient(token: AuthToken)(implicit webServiceProvider: WebService = PlayW
         player = Some(gamePlayer)
       )
 
-      UniverseReport(game)
+      val players: Seq[Player] = parsePlayers(jsReport)
+
+      UniverseReport(game, players)
     }
   }
 
@@ -170,4 +177,72 @@ class NPClient(token: AuthToken)(implicit webServiceProvider: WebService = PlayW
       playerId = (jsReport \ "player_uid").as[Int],
       admin = (jsReport \ "admin").as[Int] > 0
     )
+
+  private def parsePlayers(jsReport: JsValue): Seq[Player] = {
+    def getJsonPlayers(playerMap: JsValue, n: Int): Stream[JsValue] = {
+      val player = playerMap \ n.toString
+
+      player match {
+        case _: JsUndefined => Stream.empty
+        case _ => Stream.cons(player, getJsonPlayers(playerMap, n + 1))
+      }
+    }
+
+    val jsonPlayers: Stream[JsValue] = getJsonPlayers(jsReport \ "players", 0)
+
+    for (
+      jsonPlayer <- jsonPlayers.toSeq
+    ) yield parsePlayer(jsonPlayer)
+  }
+
+  def parsePlayer(jsonPlayer: JsValue): Player = {
+    Player(
+      playerId = (jsonPlayer \ "uid").as[Int],
+      totalEconomy = (jsonPlayer \ "total_economy").as[Int],
+      totalIndustry = (jsonPlayer \ "total_industry").as[Int],
+      totalScience = (jsonPlayer \ "total_science").as[Int],
+      aiControlled = (jsonPlayer \ "ai").as[Int] != 0,
+      totalStars = (jsonPlayer \ "total_stars").as[Int],
+      totalCarriers = (jsonPlayer \ "total_fleets").as[Int],
+      totalShips = (jsonPlayer \ "total_strength").as[Int],
+      name = (jsonPlayer \ "alias").as[String],
+      scanning = PlayerTechLevel(
+        value = (jsonPlayer \ "tech" \ "scanning" \ "value").as[Double],
+        level = (jsonPlayer \ "tech" \ "scanning" \ "level").as[Int]
+      ),
+      hyperspaceRange = PlayerTechLevel(
+        value = (jsonPlayer \ "tech" \ "propulsion" \ "value").as[Double],
+        level = (jsonPlayer \ "tech" \ "propulsion" \ "level").as[Int]
+      ),
+      terraforming = PlayerTechLevel(
+        value = (jsonPlayer \ "tech" \ "terraforming" \ "value").as[Double],
+        level = (jsonPlayer \ "tech" \ "terraforming" \ "level").as[Int]
+      ),
+      experimentation = PlayerTechLevel(
+        value = (jsonPlayer \ "tech" \ "research" \ "value").as[Double],
+        level = (jsonPlayer \ "tech" \ "research" \ "level").as[Int]
+      ),
+      weapons = PlayerTechLevel(
+        value = (jsonPlayer \ "tech" \ "weapons" \ "value").as[Double],
+        level = (jsonPlayer \ "tech" \ "weapons" \ "level").as[Int]
+      ),
+      banking = PlayerTechLevel(
+        value = (jsonPlayer \ "tech" \ "banking" \ "value").as[Double],
+        level = (jsonPlayer \ "tech" \ "banking" \ "level").as[Int]
+      ),
+      manufacturing = PlayerTechLevel(
+        value = (jsonPlayer \ "tech" \ "manufacturing" \ "value").as[Double],
+        level = (jsonPlayer \ "tech" \ "manufacturing" \ "level").as[Int]
+      ),
+      conceded = (jsonPlayer \ "ai").as[Int] match {
+        case 0 => PlayerConcededResult.active
+        case 1 => PlayerConcededResult.quit
+        case 2 => PlayerConcededResult.awayFromKeyboard
+      },
+      ready = (jsonPlayer \ "ready").as[Int] != 0,
+      missedTurns =  (jsonPlayer \ "missed_turns").as[Int],
+      renownToGive = (jsonPlayer \ "karma_to_give").as[Int]
+    )
+  }
+
 }
