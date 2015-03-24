@@ -1,6 +1,13 @@
 package sdk.model
 
-import play.api.libs.json.{Json, Format}
+import play.api.data.validation.ValidationError
+import play.api.libs.json._
+
+import scala.util._
+
+object Player {
+  implicit val fmt: Format[Player] = Json.format[Player]
+}
 
 case class Player(
   playerId: Int,
@@ -12,35 +19,38 @@ case class Player(
   totalCarriers: Int,
   totalShips: Int,
   name: String,
-  scanning: Tech,
-  hyperspaceRange: Tech,
-  terraforming: Tech,
-  experimentation: Tech,
-  weapons: Tech,
-  banking: Tech,
-  manufacturing: Tech,
-//  conceded: ConcededResult.ConcededResult,
+  scanning: PlayerTechLevel,
+  hyperspaceRange: PlayerTechLevel,
+  terraforming: PlayerTechLevel,
+  experimentation: PlayerTechLevel,
+  weapons: PlayerTechLevel,
+  banking: PlayerTechLevel,
+  manufacturing: PlayerTechLevel,
+  conceded: PlayerConcededResult.ConcededResult,
   ready: Boolean,
   missedTurns: Int,
   renownToGive: Int
 )
 
-case class Tech(
+object PlayerTechLevel {
+  implicit val fmt: Format[PlayerTechLevel] = Json.format[PlayerTechLevel]
+}
+
+case class PlayerTechLevel(
   value: Double,
   level: Int
 )
 
-//object ConcededResult extends Enumeration {
-//  type ConcededResult = Value
-//  val active, awayFromKeyboard, quit = Value
-//
-//  implicit val fmt: Format[ConcededResult] = Json.format[ConcededResult]
-//}
+object PlayerConcededResult extends Enumeration {
+  type ConcededResult = Value
+  val active, awayFromKeyboard, quit = Value
 
-object Player {
-  implicit val fmt: Format[Player] = Json.format[Player]
-}
+  implicit val fmt: Format[ConcededResult] = new Format[ConcededResult] {
+    def reads(json: JsValue): JsResult[ConcededResult] = Try(PlayerConcededResult.withName(json.as[String])) match {
+      case Success(result) => JsSuccess(result)
+      case Failure(e) => JsError(ValidationError(e.getMessage))
+    }
 
-object Tech {
-  implicit val fmt: Format[Tech] = Json.format[Tech]
+    def writes(o: ConcededResult): JsValue = JsString(o.toString)
+  }
 }

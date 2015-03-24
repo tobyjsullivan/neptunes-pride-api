@@ -194,55 +194,57 @@ class NPClient(token: AuthToken)(implicit webServiceProvider: WebService = PlayW
 
     for (
       jsonPlayer <- jsonPlayers.toSeq
-    ) yield {
-      Player(
-        playerId = (jsonPlayer \ "uid").as[Int],
-        totalEconomy = (jsonPlayer \ "total_economy").as[Int],
-        totalIndustry = (jsonPlayer \ "total_industry").as[Int],
-        totalScience = (jsonPlayer \ "total_science").as[Int],
-        aiControlled = (jsReport \ "ai").asOpt[Int].getOrElse(0) != 0,
-        totalStars = (jsonPlayer \ "total_stars").as[Int],
-        totalCarriers = (jsonPlayer \ "total_fleets").as[Int],
-        totalShips = (jsonPlayer \ "total_strength").as[Int],
-        name = (jsonPlayer \ "alias").as[String],
-        scanning = Tech(
-          value = (jsonPlayer \ "tech" \ "scanning" \ "value").as[Double],
-          level = (jsonPlayer \ "tech" \ "scanning" \ "level").as[Int]
-        ),
-        hyperspaceRange = Tech(
-          value = (jsonPlayer \ "tech" \ "propulsion" \ "value").as[Double],
-          level = (jsonPlayer \ "tech" \ "propulsion" \ "level").as[Int]
-        ),
-        terraforming = Tech(
-          value = (jsonPlayer \ "tech" \ "terraforming" \ "value").as[Double],
-          level = (jsonPlayer \ "tech" \ "terraforming" \ "level").as[Int]
-        ),
-        experimentation = Tech(
-          value = (jsonPlayer \ "tech" \ "research" \ "value").as[Double],
-          level = (jsonPlayer \ "tech" \ "research" \ "level").as[Int]
-        ),
-        weapons = Tech(
-          value = (jsonPlayer \ "tech" \ "weapons" \ "value").as[Double],
-          level = (jsonPlayer \ "tech" \ "weapons" \ "level").as[Int]
-        ),
-        banking = Tech(
-          value = (jsonPlayer \ "tech" \ "banking" \ "value").as[Double],
-          level = (jsonPlayer \ "tech" \ "banking" \ "level").as[Int]
-        ),
-        manufacturing = Tech(
-          value = (jsonPlayer \ "tech" \ "manufacturing" \ "value").as[Double],
-          level = (jsonPlayer \ "tech" \ "manufacturing" \ "level").as[Int]
-        ),
-//        conceded = (jsReport \ "ai").as[Int] match {
-//          case 0 => ConcededResult.active
-//          case 1 => ConcededResult.quit
-//          case 2 => ConcededResult.awayFromKeyboard
-//        },
-        ready = (jsReport \ "ready").asOpt[Int].getOrElse(0) != 0,
-        missedTurns =  (jsReport \ "missed_turns").asOpt[Int].getOrElse(0),
-        renownToGive = (jsReport \ "karma_to_give").asOpt[Int].getOrElse(0)
-      )
-    }
+    ) yield parsePlayer(jsonPlayer)
+  }
+
+  def parsePlayer(jsonPlayer: JsValue): Player = {
+    Player(
+      playerId = (jsonPlayer \ "uid").as[Int],
+      totalEconomy = (jsonPlayer \ "total_economy").as[Int],
+      totalIndustry = (jsonPlayer \ "total_industry").as[Int],
+      totalScience = (jsonPlayer \ "total_science").as[Int],
+      aiControlled = (jsonPlayer \ "ai").as[Int] != 0,
+      totalStars = (jsonPlayer \ "total_stars").as[Int],
+      totalCarriers = (jsonPlayer \ "total_fleets").as[Int],
+      totalShips = (jsonPlayer \ "total_strength").as[Int],
+      name = (jsonPlayer \ "alias").as[String],
+      scanning = PlayerTechLevel(
+        value = (jsonPlayer \ "tech" \ "scanning" \ "value").as[Double],
+        level = (jsonPlayer \ "tech" \ "scanning" \ "level").as[Int]
+      ),
+      hyperspaceRange = PlayerTechLevel(
+        value = (jsonPlayer \ "tech" \ "propulsion" \ "value").as[Double],
+        level = (jsonPlayer \ "tech" \ "propulsion" \ "level").as[Int]
+      ),
+      terraforming = PlayerTechLevel(
+        value = (jsonPlayer \ "tech" \ "terraforming" \ "value").as[Double],
+        level = (jsonPlayer \ "tech" \ "terraforming" \ "level").as[Int]
+      ),
+      experimentation = PlayerTechLevel(
+        value = (jsonPlayer \ "tech" \ "research" \ "value").as[Double],
+        level = (jsonPlayer \ "tech" \ "research" \ "level").as[Int]
+      ),
+      weapons = PlayerTechLevel(
+        value = (jsonPlayer \ "tech" \ "weapons" \ "value").as[Double],
+        level = (jsonPlayer \ "tech" \ "weapons" \ "level").as[Int]
+      ),
+      banking = PlayerTechLevel(
+        value = (jsonPlayer \ "tech" \ "banking" \ "value").as[Double],
+        level = (jsonPlayer \ "tech" \ "banking" \ "level").as[Int]
+      ),
+      manufacturing = PlayerTechLevel(
+        value = (jsonPlayer \ "tech" \ "manufacturing" \ "value").as[Double],
+        level = (jsonPlayer \ "tech" \ "manufacturing" \ "level").as[Int]
+      ),
+      conceded = (jsonPlayer \ "ai").as[Int] match {
+        case 0 => PlayerConcededResult.active
+        case 1 => PlayerConcededResult.quit
+        case 2 => PlayerConcededResult.awayFromKeyboard
+      },
+      ready = (jsonPlayer \ "ready").as[Int] != 0,
+      missedTurns =  (jsonPlayer \ "missed_turns").as[Int],
+      renownToGive = (jsonPlayer \ "karma_to_give").as[Int]
+    )
   }
 
 }
