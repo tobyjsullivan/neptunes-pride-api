@@ -24,7 +24,7 @@ object Games extends Controller {
   }
 
   def readPlayers(gameId: Long) = AuthenticatedAction.async { (request, client) =>
-    val fPlayerDetails = client.getPlayerDetails(gameId)
+    val fPlayerDetails = client.getPlayers(gameId)
 
     fPlayerDetails.map { players =>
       Ok(Json.obj("result" -> players))

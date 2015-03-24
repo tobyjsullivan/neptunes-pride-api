@@ -1,6 +1,6 @@
 package sdk
 
-import play.api.libs.json.{JsUndefined, JsArray, JsValue}
+import play.api.libs.json._
 import sdk.http.impl.PlayWebService
 import sdk.http.{RequestHolder, Response, WebService}
 import sdk.model._
@@ -15,8 +15,8 @@ object NPClient {
   val metadataServiceUrl = s"$rootUrl/mrequest"
   val gameServiceUrl = s"$rootUrl/grequest"
 
-  case class PlayerInfo(games: List[Game])
-  case class UniverseReport(game: Game, players: Seq[Player])
+  case class PlayerInfo(games: List[GameMetadata])
+  case class UniverseReport(game: Game, players: Seq[Player], stars: Seq[Star])
 
   def exchangeForAuthToken(username: String, password: String, ws: WebService = PlayWebService, ts: TokenService = TokenServiceImpl)(implicit ec: ExecutionContext): Future[AuthToken] = {
     for {
@@ -61,7 +61,7 @@ class NPClient(token: AuthToken)(implicit webServiceProvider: WebService = PlayW
 
   private val orderEndpointUrl = s"$gameServiceUrl/order"
 
-  def getOpenGames()(implicit ec: ExecutionContext): Future[List[Game]] = {
+  def getOpenGames()(implicit ec: ExecutionContext): Future[Seq[GameMetadata]] = {
     for {
       cookie <- tokenServiceProvider.lookupCookie(token)
       playerInfo <- fetchPlayerInfo(cookie)
@@ -75,11 +75,18 @@ class NPClient(token: AuthToken)(implicit webServiceProvider: WebService = PlayW
     } yield universeReport.game
   }
 
-  def getPlayerDetails(gameId: Long)(implicit ec: ExecutionContext): Future[Seq[Player]] = {
+  def getPlayers(gameId: Long)(implicit ec: ExecutionContext): Future[Seq[Player]] = {
     for {
       cookie <- tokenServiceProvider.lookupCookie(token)
       universeReport <- fetchFullUniverseReport(gameId, cookie)
     } yield universeReport.players
+  }
+
+  def getStars(gameId: Long)(implicit ec: ExecutionContext): Future[Seq[Star]] = {
+    for {
+      cookie <- tokenServiceProvider.lookupCookie(token)
+      universeReport <- fetchFullUniverseReport(gameId, cookie)
+    } yield universeReport.stars
   }
 
   def submitTurn(gameId: Long)(implicit ec: ExecutionContext): Future[Unit] = {
@@ -106,7 +113,7 @@ class NPClient(token: AuthToken)(implicit webServiceProvider: WebService = PlayW
       val jsGames = (response.json \\ "open_games").head.as[JsArray]
 
       val games = jsGames.value.map { jsonGame =>
-        Game(
+        GameMetadata(
           gameId = (jsonGame \ "number").as[String].toLong,
           name = (jsonGame \ "name").as[String]
         )
@@ -125,24 +132,28 @@ class NPClient(token: AuthToken)(implicit webServiceProvider: WebService = PlayW
     )
 
     postFormData(orderEndpointUrl, data, Some(cookie)).map { response =>
-      val jsReport = response.json \ "report"
-      val gameName = (jsReport \ "name").as[String]
-      val gameDetails = parseGameDetails(jsReport)
-      val gameStatus = parseGameStatus(jsReport)
-      val gamePlayer = parseGamePlayer(jsReport)
-
-      val game = Game(
-        gameId = gameId,
-        name = gameName,
-        details = Some(gameDetails),
-        status = Some(gameStatus),
-        player = Some(gamePlayer)
-      )
-
-      val players: Seq[Player] = parsePlayers(jsReport)
-
-      UniverseReport(game, players)
+      parseUniverseReport(response.json \ "report")
     }
+  }
+
+  private def parseUniverseReport(jsReport: JsValue): UniverseReport = {
+    val gameName = (jsReport \ "name").as[String]
+    val gameDetails = parseGameDetails(jsReport)
+    val gameStatus = parseGameStatus(jsReport)
+    val gamePlayer = parseGamePlayer(jsReport)
+
+    val game = Game(
+      name = gameName,
+      details = Some(gameDetails),
+      status = Some(gameStatus),
+      player = Some(gamePlayer)
+    )
+
+    val players: Seq[Player] = parsePlayers(jsReport)
+
+    val stars: Seq[Star] = parseStars(jsReport)
+
+    UniverseReport(game, players, stars)
   }
 
   private def parseGameDetails(jsReport: JsValue): GameDetails =
@@ -178,24 +189,22 @@ class NPClient(token: AuthToken)(implicit webServiceProvider: WebService = PlayW
       admin = (jsReport \ "admin").as[Int] > 0
     )
 
-  private def parsePlayers(jsReport: JsValue): Seq[Player] = {
-    def getJsonPlayers(playerMap: JsValue, n: Int): Stream[JsValue] = {
-      val player = playerMap \ n.toString
-
-      player match {
-        case _: JsUndefined => Stream.empty
-        case _ => Stream.cons(player, getJsonPlayers(playerMap, n + 1))
-      }
-    }
-
-    val jsonPlayers: Stream[JsValue] = getJsonPlayers(jsReport \ "players", 0)
-
-    for (
-      jsonPlayer <- jsonPlayers.toSeq
-    ) yield parsePlayer(jsonPlayer)
+  /**
+   * Takes a JSON "map" (an object with integer-named properties) and returns a stream of JsValues which is more useful
+   * @param jsonMap The JsValue which contains all the elements in the map.
+   * @return A Stream of the values in the same order
+   */
+  private def getJsonObjects(jsonMap: JsValue): Seq[JsValue] = jsonMap match {
+    case jsObj: JsObject => jsObj.value.values.toSeq
+    case _ => Seq()
   }
 
-  def parsePlayer(jsonPlayer: JsValue): Player = {
+  private def parsePlayers(jsReport: JsValue): Seq[Player] =
+    getJsonObjects(jsReport \ "players") map { jsPlayer =>
+      parsePlayer(jsPlayer)
+    } sortBy(_.playerId)
+
+  def parsePlayer(jsonPlayer: JsValue): Player =
     Player(
       playerId = (jsonPlayer \ "uid").as[Int],
       totalEconomy = (jsonPlayer \ "total_economy").as[Int],
@@ -234,7 +243,7 @@ class NPClient(token: AuthToken)(implicit webServiceProvider: WebService = PlayW
         value = (jsonPlayer \ "tech" \ "manufacturing" \ "value").as[Double],
         level = (jsonPlayer \ "tech" \ "manufacturing" \ "level").as[Int]
       ),
-      conceded = (jsonPlayer \ "ai").as[Int] match {
+      conceded = (jsonPlayer \ "conceded").as[Int] match {
         case 0 => PlayerConcededResult.active
         case 1 => PlayerConcededResult.quit
         case 2 => PlayerConcededResult.awayFromKeyboard
@@ -243,6 +252,29 @@ class NPClient(token: AuthToken)(implicit webServiceProvider: WebService = PlayW
       missedTurns =  (jsonPlayer \ "missed_turns").as[Int],
       renownToGive = (jsonPlayer \ "karma_to_give").as[Int]
     )
+
+  private def parseStars(jsReport: JsValue): Seq[Star] = {
+    getJsonObjects(jsReport \ "stars") map { jsStar =>
+      parseStar(jsStar)
+    } sortBy(_.starId)
   }
 
+  private def parseStar(jsStar: JsValue): Star =
+    Star(
+      starId = (jsStar \ "uid").as[Int],
+      name = (jsStar \ "n").as[String],
+      playerId = (jsStar \ "puid").asOpt[Int],
+      visible = (jsStar \ "v").as[String] != "0",
+      position = Position(
+        x = java.lang.Double.parseDouble((jsStar \ "x").as[String]),
+        y = java.lang.Double.parseDouble((jsStar \ "y").as[String])
+      ),
+      economy = (jsStar \ "e").asOpt[Int],
+      industry = (jsStar \ "i").asOpt[Int],
+      science = (jsStar \ "s").asOpt[Int],
+      naturalResources = (jsStar \ "nr").asOpt[Int],
+      terraformedResources = (jsStar \ "r").asOpt[Int],
+      warpGate = (jsStar \ "ga").asOpt[Int].map(_ != 0),
+      ships = (jsStar \ "st").asOpt[Int]
+    )
 }
