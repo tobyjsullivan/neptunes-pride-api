@@ -52,7 +52,6 @@ object NPClient {
       case Some(cookie) => holder.withHeaders("Cookie" -> s"auth=${cookie.value}")
       case None => holder
     }
-
     authedHolder.post(data)
   }
 }
@@ -127,7 +126,6 @@ class NPClient(token: AuthToken)(implicit webServiceProvider: WebService = PlayW
 
     postFormData(orderEndpointUrl, data, Some(cookie)).map { response =>
       val jsReport = response.json \ "report"
-
       val gameName = (jsReport \ "name").as[String]
       val gameDetails = parseGameDetails(jsReport)
       val gameStatus = parseGameStatus(jsReport)
