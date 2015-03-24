@@ -31,6 +31,14 @@ object Games extends Controller {
     }
   }
 
+  def readStars(gameId: Long) = AuthenticatedAction.async { (request, client) =>
+    val fStars = client.getStars(gameId)
+
+    fStars.map { stars =>
+      Ok(Json.obj("result" -> stars))
+    }
+  }
+
   def submitTurn(gameId: Long) = AuthenticatedAction.async { (request, client) =>
     val fSubmitRequest = client.submitTurn(gameId)
 
