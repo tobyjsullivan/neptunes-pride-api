@@ -1,5 +1,7 @@
 package sdk.model
 
+import play.api.libs.json.{Json, Format}
+
 case class Star(
   starId: Int,
   name: String,
@@ -14,3 +16,7 @@ case class Star(
   warpGate: Option[Boolean],
   ships: Option[Int]
 )
+
+object Star {
+  implicit val fmt: Format[Star] = Json.format[Star]
+}

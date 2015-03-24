@@ -8,6 +8,7 @@ import sdk.tokenService.TokenService
 import sdk.tokenService.impl.TokenServiceImpl
 
 import scala.concurrent.{ExecutionContext, Future}
+import scala.util.{Failure, Success, Try}
 
 object NPClient {
   val rootUrl = "http://triton.ironhelmet.com"
@@ -58,6 +59,7 @@ object NPClient {
 
 class NPClient(token: AuthToken)(implicit webServiceProvider: WebService = PlayWebService, tokenServiceProvider: TokenService = TokenServiceImpl) {
   import sdk.NPClient._
+  import responseParsers.FullUniverseReportParsers._
 
   private val orderEndpointUrl = s"$gameServiceUrl/order"
 
@@ -132,149 +134,7 @@ class NPClient(token: AuthToken)(implicit webServiceProvider: WebService = PlayW
     )
 
     postFormData(orderEndpointUrl, data, Some(cookie)).map { response =>
-      parseUniverseReport(response.json \ "report")
+      (response.json \ "report").as[UniverseReport]
     }
   }
-
-  private def parseUniverseReport(jsReport: JsValue): UniverseReport = {
-    val gameName = (jsReport \ "name").as[String]
-    val gameDetails = parseGameDetails(jsReport)
-    val gameStatus = parseGameStatus(jsReport)
-    val gamePlayer = parseGamePlayer(jsReport)
-
-    val game = Game(
-      name = gameName,
-      details = Some(gameDetails),
-      status = Some(gameStatus),
-      player = Some(gamePlayer)
-    )
-
-    val players: Seq[Player] = parsePlayers(jsReport)
-
-    val stars: Seq[Star] = parseStars(jsReport)
-
-    UniverseReport(game, players, stars)
-  }
-
-  private def parseGameDetails(jsReport: JsValue): GameDetails =
-    GameDetails(
-      turnBased = (jsReport \ "turn_based").as[Int] != 0,
-      turnBasedTimeout = (jsReport \ "turn_based_time_out").as[Int],
-      war = (jsReport \ "war").as[Int] != 0,
-      tickRate = (jsReport \ "tick_rate").as[Int],
-      productionRate = (jsReport \ "production_rate").as[Int],
-      totalStars = (jsReport \ "total_stars").as[Int],
-      starsForVictory = (jsReport \ "stars_for_victory").as[Int],
-      tradeCost = (jsReport \ "trade_cost").as[Int],
-      tradeScanned = (jsReport \ "trade_scanned").as[Int] != 0,
-      carrierSpeed = (jsReport \ "fleet_speed").as[Double]
-    )
-
-  private def parseGameStatus(jsReport: JsValue): GameStatus =
-    GameStatus(
-      startTime = (jsReport \ "start_time").as[Long],
-      now = (jsReport \ "now").as[Long],
-      started = (jsReport \ "started").as[Boolean],
-      paused = (jsReport \ "paused").as[Boolean],
-      gameOver = (jsReport \ "game_over").as[Int] != 0,
-      productions = (jsReport \ "productions").as[Int],
-      productionCounter = (jsReport \ "production_counter").as[Int],
-      tick = (jsReport \ "tick").as[Int],
-      tickFragment = (jsReport \ "tick_fragment").as[Double]
-    )
-
-  private def parseGamePlayer(jsReport: JsValue): GamePlayer =
-    GamePlayer(
-      playerId = (jsReport \ "player_uid").as[Int],
-      admin = (jsReport \ "admin").as[Int] > 0
-    )
-
-  /**
-   * Takes a JSON "map" (an object with integer-named properties) and returns a stream of JsValues which is more useful
-   * @param jsonMap The JsValue which contains all the elements in the map.
-   * @return A Stream of the values in the same order
-   */
-  private def getJsonObjects(jsonMap: JsValue): Seq[JsValue] = jsonMap match {
-    case jsObj: JsObject => jsObj.value.values.toSeq
-    case _ => Seq()
-  }
-
-  private def parsePlayers(jsReport: JsValue): Seq[Player] =
-    getJsonObjects(jsReport \ "players") map { jsPlayer =>
-      parsePlayer(jsPlayer)
-    } sortBy(_.playerId)
-
-  def parsePlayer(jsonPlayer: JsValue): Player =
-    Player(
-      playerId = (jsonPlayer \ "uid").as[Int],
-      totalEconomy = (jsonPlayer \ "total_economy").as[Int],
-      totalIndustry = (jsonPlayer \ "total_industry").as[Int],
-      totalScience = (jsonPlayer \ "total_science").as[Int],
-      aiControlled = (jsonPlayer \ "ai").as[Int] != 0,
-      totalStars = (jsonPlayer \ "total_stars").as[Int],
-      totalCarriers = (jsonPlayer \ "total_fleets").as[Int],
-      totalShips = (jsonPlayer \ "total_strength").as[Int],
-      name = (jsonPlayer \ "alias").as[String],
-      scanning = PlayerTechLevel(
-        value = (jsonPlayer \ "tech" \ "scanning" \ "value").as[Double],
-        level = (jsonPlayer \ "tech" \ "scanning" \ "level").as[Int]
-      ),
-      hyperspaceRange = PlayerTechLevel(
-        value = (jsonPlayer \ "tech" \ "propulsion" \ "value").as[Double],
-        level = (jsonPlayer \ "tech" \ "propulsion" \ "level").as[Int]
-      ),
-      terraforming = PlayerTechLevel(
-        value = (jsonPlayer \ "tech" \ "terraforming" \ "value").as[Double],
-        level = (jsonPlayer \ "tech" \ "terraforming" \ "level").as[Int]
-      ),
-      experimentation = PlayerTechLevel(
-        value = (jsonPlayer \ "tech" \ "research" \ "value").as[Double],
-        level = (jsonPlayer \ "tech" \ "research" \ "level").as[Int]
-      ),
-      weapons = PlayerTechLevel(
-        value = (jsonPlayer \ "tech" \ "weapons" \ "value").as[Double],
-        level = (jsonPlayer \ "tech" \ "weapons" \ "level").as[Int]
-      ),
-      banking = PlayerTechLevel(
-        value = (jsonPlayer \ "tech" \ "banking" \ "value").as[Double],
-        level = (jsonPlayer \ "tech" \ "banking" \ "level").as[Int]
-      ),
-      manufacturing = PlayerTechLevel(
-        value = (jsonPlayer \ "tech" \ "manufacturing" \ "value").as[Double],
-        level = (jsonPlayer \ "tech" \ "manufacturing" \ "level").as[Int]
-      ),
-      conceded = (jsonPlayer \ "conceded").as[Int] match {
-        case 0 => PlayerConcededResult.active
-        case 1 => PlayerConcededResult.quit
-        case 2 => PlayerConcededResult.awayFromKeyboard
-      },
-      ready = (jsonPlayer \ "ready").as[Int] != 0,
-      missedTurns =  (jsonPlayer \ "missed_turns").as[Int],
-      renownToGive = (jsonPlayer \ "karma_to_give").as[Int]
-    )
-
-  private def parseStars(jsReport: JsValue): Seq[Star] = {
-    getJsonObjects(jsReport \ "stars") map { jsStar =>
-      parseStar(jsStar)
-    } sortBy(_.starId)
-  }
-
-  private def parseStar(jsStar: JsValue): Star =
-    Star(
-      starId = (jsStar \ "uid").as[Int],
-      name = (jsStar \ "n").as[String],
-      playerId = (jsStar \ "puid").asOpt[Int],
-      visible = (jsStar \ "v").as[String] != "0",
-      position = Position(
-        x = java.lang.Double.parseDouble((jsStar \ "x").as[String]),
-        y = java.lang.Double.parseDouble((jsStar \ "y").as[String])
-      ),
-      economy = (jsStar \ "e").asOpt[Int],
-      industry = (jsStar \ "i").asOpt[Int],
-      science = (jsStar \ "s").asOpt[Int],
-      naturalResources = (jsStar \ "nr").asOpt[Int],
-      terraformedResources = (jsStar \ "r").asOpt[Int],
-      warpGate = (jsStar \ "ga").asOpt[Int].map(_ != 0),
-      ships = (jsStar \ "st").asOpt[Int]
-    )
 }

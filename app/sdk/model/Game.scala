@@ -4,7 +4,7 @@ import play.api.libs.json._
 
 case class Game(
   name: String,
-  details: Option[GameDetails],
+  details: Option[GameSettings],
   status: Option[GameStatus],
   player: Option[GamePlayer]
 )

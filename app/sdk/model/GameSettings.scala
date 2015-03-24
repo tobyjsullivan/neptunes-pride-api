@@ -2,7 +2,7 @@ package sdk.model
 
 import play.api.libs.json._
 
-case class GameDetails(
+case class GameSettings(
   turnBased: Boolean,
   turnBasedTimeout: Int,
   war: Boolean,
@@ -15,6 +15,6 @@ case class GameDetails(
   carrierSpeed: Double
 )
 
-object GameDetails {
-  implicit val fmt: Format[GameDetails] = Json.format[GameDetails]
+object GameSettings {
+  implicit val fmt: Format[GameSettings] = Json.format[GameSettings]
 }
