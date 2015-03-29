@@ -101,7 +101,9 @@ class NPClient(token: AuthToken)(implicit webServiceProvider: WebService = PlayW
       )
 
       postFormData(orderEndpointUrl, data, Some(cookie))
-    }.mapTo[Unit]
+    }.map { _ =>
+      () // Drop the response and return Unit
+    }
   }
 
   private def fetchPlayerInfo(cookie: AuthCookie)(implicit ec: ExecutionContext): Future[PlayerInfo] = {
