@@ -30,8 +30,10 @@ You can find a live copy of the API running at [neptunes-pride-api.herokuapp.com
 * [GET /games/:gameId](#get-gamesgameid)
 * [GET /games/:gameId/players](#get-gamesgameidplayers)
 * [GET /games/:gameId/stars](#get-gamesgameidstars)
-* [POST /games/:gameId](#post-gamesgameid)
+* [GET /games/:gameId/carriers](#get-gamesgameidcarriers)
 * [POST /games/:gameId/carriers](#post-gamesgameidcarriers)
+* [POST /games/:gameId/carriers/:carrierId/orders](#post-gamesgameidcarrierscarrieridorders)
+* [POST /games/:gameId](#post-gamesgameid)
 
 ### POST /login
 Takes a username (or 'True Alias') and password and returns an auth token.
@@ -415,23 +417,6 @@ Receives all data about carriers in the game which is currently visible to the p
 }
 ```
 
-### POST /games/:gameId
-Submit a turn for a turn-based game.
-
-- Requires auth: Yes
-- Request format: N/A
-- Response format: JSON
-
-#### Parameters
-None
-
-#### Response
-```json
-{
-  "result":"ok"
-}
-```
-
 ### POST /games/:gameId/carriers
 Create a new carrier.
 
@@ -476,3 +461,72 @@ numShips | true | Your password used for signing in. | Url-escaped string.
   }
 }
 ````
+
+### POST /games/:gameId/carriers/:carrierId/orders
+Issue orders to a carrier
+
+- Requires auth: Yes
+- Request format: JSON
+- Response format: JSON
+
+#### Parameters
+
+Parameter | Required | Description | Type
+--- | --- | --- | ---
+starId | Yes | The star on which to build the carrier | Integer
+action | Yes | Your password used for signing in. | Any actionId string (see list below)
+ships | No | Only required for actions indicated in table below. Defaults to 0 if not included. | Integer
+delay | No | The time the carrier should layover at the specified star (measured in ticks). | Integer
+
+##### Available Action IDs
+These values are available for the `action` parameter
+
+Action ID | Include `ships` parameter
+--- | ---
+doNothing | No
+collectAll | No
+collect | Yes
+collectAllBut | Yes
+dropAll | No
+drop | Yes
+dropAllBut | Yes
+garrison | Yes
+
+#### Example Request
+```json
+{
+  "starId": 33,
+  "action": "collectAllBut"
+  "ships": 12
+}
+```
+
+#### Example Response
+```json
+{
+  "result": {
+    "starId": 33,
+    "action": "collectAllBut"
+    "ships": 12,
+    "delay": 0
+  }
+}
+```
+
+
+### POST /games/:gameId
+Submit a turn for a turn-based game.
+
+- Requires auth: Yes
+- Request format: N/A
+- Response format: JSON
+
+#### Parameters
+None
+
+#### Response
+```json
+{
+  "result":"ok"
+}
+```
