@@ -17,7 +17,7 @@ object NPClient {
   val gameServiceUrl = s"$rootUrl/grequest"
 
   case class PlayerInfo(games: List[GameMetadata])
-  case class UniverseReport(game: Game, players: Seq[Player], stars: Seq[Star])
+  case class UniverseReport(game: Game, players: Seq[Player], stars: Seq[Star], carriers: Seq[Carrier])
 
   def exchangeForAuthToken(username: String, password: String, ws: WebService = PlayWebService, ts: TokenService = TokenServiceImpl)(implicit ec: ExecutionContext): Future[AuthToken] = {
     for {
@@ -90,6 +90,13 @@ class NPClient(token: AuthToken)(implicit webServiceProvider: WebService = PlayW
       cookie <- tokenServiceProvider.lookupCookie(token)
       universeReport <- fetchFullUniverseReport(gameId, cookie)
     } yield universeReport.stars
+  }
+
+  def getCarriers(gameId: Long)(implicit ec: ExecutionContext): Future[Seq[Carrier]] = {
+    for {
+      cookie <- tokenServiceProvider.lookupCookie(token)
+      universeReport <- fetchFullUniverseReport(gameId, cookie)
+    } yield universeReport.carriers
   }
 
   def createCarrier(gameId: Long, starId: Int, ships: Int)(implicit ec: ExecutionContext): Future[Either[String, Carrier]] = {

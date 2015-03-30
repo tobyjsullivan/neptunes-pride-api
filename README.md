@@ -341,6 +341,80 @@ Receives all data about stars in the game which is currently visible to the play
 }
 ```
 
+### GET /games/:gameId/carriers
+Receives all data about carriers in the game which is currently visible to the player.
+
+- Requires auth: Yes
+- Request format: N/A
+- Response format: JSON
+
+#### Example Response
+```json
+{
+  "result": [
+    {
+      "carrierId": 1,
+      "starId": 1,
+      "ships": 7,
+      "name": "Zaurak I",
+      "loopingOrders": false,
+      "orders": [],
+      "playerId": 0,
+      "position": {
+        "x": -0.46904025,
+        "y": -0.76049581
+      },
+      "lastPosition": {
+        "x": -0.46904025,
+        "y": -0.76049581
+      }
+    },
+    {
+      "carrierId": 2,
+      "starId": 3,
+      "ships": 10,
+      "name": "Alderamin I",
+      "loopingOrders": false,
+      "orders": [
+        {
+          "delay": 60,
+          "planetId": 7,
+          "action": "garrison",
+          "ships": 1
+        }
+      ],
+      "playerId": 0,
+      "position": {
+        "x": -0.60498642,
+        "y": -0.69710307
+      },
+      "lastPosition": {
+        "x": -0.60498642,
+        "y": -0.69710307
+      }
+    },
+    {
+      "carrierId": 3,
+      "starId": 5,
+      "ships": 1,
+      "name": "Atlas I",
+      "loopingOrders": false,
+      "orders": [],
+      "playerId": 0,
+      "position": {
+        "x": -0.36096188,
+        "y": -1.05743868
+      },
+      "lastPosition": {
+        "x": -0.36096188,
+        "y": -1.05743868
+      }
+    },
+    ...
+  ]
+}
+```
+
 ### POST /games/:gameId
 Submit a turn for a turn-based game.
 

@@ -7,12 +7,15 @@ import sdk.model._
 import scala.util.{Failure, Success, Try}
 
 object FullUniverseReportParsers extends ResponseParsers {
+  import CarrierParsers._
+
   implicit val universeReportParser: Reads[UniverseReport] = new Reads[UniverseReport] {
     def reads(jsReport: JsValue): JsResult[UniverseReport] = tryParse {
       val game: Game = jsReport.as[Game]
       val players: Seq[Player] = getJsonObjects(jsReport \ "players").map(_.as[Player]).sortBy(_.playerId)
       val stars: Seq[Star] = getJsonObjects(jsReport \ "stars").map(_.as[Star]).sortBy(_.starId)
-      UniverseReport(game, players, stars)
+      val carriers: Seq[Carrier] = getJsonObjects(jsReport \ "fleets").map(_.as[Carrier]).sortBy(_.carrierId)
+      UniverseReport(game, players, stars, carriers)
     }
   }
 

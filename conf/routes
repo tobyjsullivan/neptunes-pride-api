@@ -10,5 +10,6 @@ GET         /games                        controllers.Games.index
 GET         /games/:gameId                controllers.Games.read(gameId: Long)
 GET         /games/:gameId/players        controllers.Games.readPlayers(gameId: Long)
 GET         /games/:gameId/stars          controllers.Games.readStars(gameId: Long)
+GET         /games/:gameId/carriers       controllers.Games.readCarriers(gameId: Long)
 POST        /games/:gameId                controllers.Games.submitTurn(gameId: Long)
 POST        /games/:gameId/carriers       controllers.Games.createCarrier(gameId: Long)
