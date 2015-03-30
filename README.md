@@ -358,7 +358,7 @@ None
 }
 ```
 
-### POST /game/:gameId/carriers
+### POST /games/:gameId/carriers
 Create a new carrier.
 
 - Requires auth: Yes
