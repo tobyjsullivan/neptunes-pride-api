@@ -4,6 +4,7 @@ import play.api.libs.json.Json
 import play.api.mvc._
 
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 
 object Games extends Controller {
 
@@ -44,6 +45,21 @@ object Games extends Controller {
 
     fSubmitRequest.map { _ =>
       Ok(Json.obj("result" -> "ok"))
+    }
+  }
+
+  def createCarrier(gameId: Long) = AuthenticatedAction.async { (request, client) =>
+    request.body.asJson match {
+      case None => Future.successful(BadRequest(Json.obj("error" -> "Request content must be JSON")))
+      case Some(jsRequest) => {
+        val starId: Int = (jsRequest \ "starId").as[Int]
+        val ships: Int = (jsRequest \ "ships").as[Int]
+
+        client.createCarrier(gameId, starId, ships).map {
+          case Left(errorString) => BadRequest(Json.obj("error" -> errorString))
+          case Right(carrier) => Ok(Json.obj("result" -> carrier))
+        }
+      }
     }
   }
 }

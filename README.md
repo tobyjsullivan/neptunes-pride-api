@@ -15,9 +15,23 @@ curl https://neptunes-pride-api.herokuapp.com/games -H 'X-Auth-Token: 48d4bdbc98
 curl https://neptunes-pride-api.herokuapp.com/games/5536910481031168 -H 'X-Auth-Token: 48d4bdbc98e64cc5d38fc361e6d9a39f'
 ```
 
+And when using post commands, send data as JSON.
+
+```bash
+curl -X POST localhost:9000/games/5536910481031168/carriers -H 'X-Auth-Token: 48d4bdbc98e64cc5d38fc361e6d9a39f' -H 'Content-Type: application/json' --data '{"starId": 4, "ships": 14}'
+```
+
 You can find a live copy of the API running at [neptunes-pride-api.herokuapp.com](https://neptunes-pride-api.herokuapp.com).
 
 ## Endpoints
+
+* [POST /login](#post-login)
+* [GET /games](#get-games)
+* [GET /games/:gameId](#get-gamesgameid)
+* [GET /games/:gameId/players](#get-gamesgameidplayers)
+* [GET /games/:gameId/stars](#get-gamesgameidstars)
+* [POST /games/:gameId](#post-gamesgameid)
+* [POST /games/:gameId/carriers](#post-gamesgameidcarriers)
 
 ### POST /login
 Takes a username (or 'True Alias') and password and returns an auth token.
@@ -343,3 +357,48 @@ None
   "result":"ok"
 }
 ```
+
+### POST /game/:gameId/carriers
+Create a new carrier.
+
+- Requires auth: Yes
+- Request format: JSON
+- Response format: JSON
+
+#### Parameters
+
+Parameter | Required | Description | Type
+--- | --- | --- | ---
+starId | true | The star on which to build the carrier | Integer
+numShips | true | Your password used for signing in. | Url-escaped string.
+
+#### Example Request
+```json
+{
+  "starId": 33,
+  "ships": 25
+}
+```
+
+#### Example Response
+````json
+{
+  "result": {
+    "carrierId": 8,
+    "starId": 4,
+    "ships": 1,
+    "name": "Tania IV",
+    "loopingOrders": false,
+    "orders": [],
+    "playerId": 0,
+    "position": {
+      "x": -0.4487,
+      "y": -0.5284
+    },
+    "lastPosition": {
+      "x": -0.4487,
+      "y": -0.5284
+    }
+  }
+}
+````
