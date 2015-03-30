@@ -6,20 +6,13 @@ import sdk.model._
 
 import scala.util.{Failure, Success, Try}
 
-object FullUniverseReportParsers {
+object FullUniverseReportParsers extends ResponseParsers {
   implicit val universeReportParser: Reads[UniverseReport] = new Reads[UniverseReport] {
     def reads(jsReport: JsValue): JsResult[UniverseReport] = tryParse {
       val game: Game = jsReport.as[Game]
       val players: Seq[Player] = getJsonObjects(jsReport \ "players").map(_.as[Player]).sortBy(_.playerId)
       val stars: Seq[Star] = getJsonObjects(jsReport \ "stars").map(_.as[Star]).sortBy(_.starId)
       UniverseReport(game, players, stars)
-    }
-  }
-
-  private def tryParse[A](parser: => A): JsResult[A] = {
-    Try(parser) match {
-      case Success(parsed) => JsSuccess(parsed)
-      case Failure(e) => JsError(e.getMessage)
     }
   }
 

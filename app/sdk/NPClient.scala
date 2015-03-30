@@ -60,6 +60,7 @@ object NPClient {
 class NPClient(token: AuthToken)(implicit webServiceProvider: WebService = PlayWebService, tokenServiceProvider: TokenService = TokenServiceImpl) {
   import sdk.NPClient._
   import responseParsers.FullUniverseReportParsers._
+  import responseParsers.CarrierParsers._
 
   private val orderEndpointUrl = s"$gameServiceUrl/order"
 
@@ -91,6 +92,23 @@ class NPClient(token: AuthToken)(implicit webServiceProvider: WebService = PlayW
     } yield universeReport.stars
   }
 
+  def createCarrier(gameId: Long, starId: Int, ships: Int)(implicit ec: ExecutionContext): Future[Either[String, Carrier]] = {
+    tokenServiceProvider.lookupCookie(token).flatMap { cookie =>
+      val order = Seq("new_fleet", starId.toString, ships.toString).mkString(",")
+
+      val data = Map(
+        "type" -> Seq("order"),
+        "order" -> Seq(order),
+        "version" -> Seq("7"),
+        "game_number" -> Seq(gameId.toString)
+      )
+
+      postFormData(orderEndpointUrl, data, Some(cookie)).map { response =>
+        parseOrError[Carrier](response.json)
+      }
+    }
+  }
+
   def submitTurn(gameId: Long)(implicit ec: ExecutionContext): Future[Unit] = {
     tokenServiceProvider.lookupCookie(token).flatMap { cookie =>
       val data = Map(
@@ -101,7 +119,17 @@ class NPClient(token: AuthToken)(implicit webServiceProvider: WebService = PlayW
       )
 
       postFormData(orderEndpointUrl, data, Some(cookie))
-    }.mapTo[Unit]
+    }.map { _ =>
+      () // Drop the response and return Unit
+    }
+  }
+
+  private def parseOrError[A](jsResponse: JsValue)(implicit fjs: Reads[A]): Either[String, A] = {
+    (jsResponse \ "report").validate[A] match {
+      case JsSuccess(x, _) => Right(x)
+      case _: JsError if (jsResponse \ "event").asOpt[String] == Some("order:error") => Left((jsResponse \ "report").as[String])
+      case JsError(parseError) => Left("Unknown response parse error. ParseError: "+parseError.flatMap(_._2).map(_.message) +"; Data: "+jsResponse.toString)
+    }
   }
 
   private def fetchPlayerInfo(cookie: AuthCookie)(implicit ec: ExecutionContext): Future[PlayerInfo] = {
