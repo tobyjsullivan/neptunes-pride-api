@@ -496,7 +496,7 @@ Garrison | Yes
 ```json
 {
   "starId": 33,
-  "action": "CollectAllBut"
+  "action": "CollectAllBut",
   "ships": 12
 }
 ```
@@ -506,7 +506,7 @@ Garrison | Yes
 {
   "result": {
     "starId": 33,
-    "action": "CollectAllBut"
+    "action": "CollectAllBut",
     "ships": 12,
     "delay": 0
   }
