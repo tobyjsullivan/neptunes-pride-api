@@ -5,11 +5,7 @@ import play.api.libs.ws.WSResponse
 import sdk.http.{Cookie, Response}
 
 class PlayResponse(resp: WSResponse) extends Response {
-  def json: JsValue = {
-    println(resp.body)
-
-    resp.json
-  }
+  def json: JsValue = resp.json
 
   def status: Int = resp.status
 

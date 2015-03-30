@@ -9,7 +9,6 @@ import sdk.tokenService.TokenService
 import sdk.tokenService.impl.TokenServiceImpl
 
 import scala.concurrent.{ExecutionContext, Future}
-import scala.util.{Failure, Success, Try}
 
 object NPClient {
   val rootUrl = "http://triton.ironhelmet.com"
