@@ -33,7 +33,7 @@ object CarrierParsers extends ResponseParsers {
 
       CarrierOrder(
         delay = values(0),
-        planetId = values(1),
+        starId = values(1),
         action = carrierOrderActionMap(values(2)),
         ships = values(3)
       )
@@ -41,13 +41,13 @@ object CarrierParsers extends ResponseParsers {
   }
 
   private val carrierOrderActionMap: Map[Int, CarrierOrderAction] = Map(
-    0 -> CarrierOrderAction.doNothing,
-    1 -> CarrierOrderAction.collectAll,
-    2 -> CarrierOrderAction.dropAll,
-    3 -> CarrierOrderAction.collect,
-    4 -> CarrierOrderAction.drop,
-    5 -> CarrierOrderAction.collectAllBut,
-    6 -> CarrierOrderAction.dropAllBut,
-    7 -> CarrierOrderAction.garrison
+    0 -> CarrierOrderAction.DoNothing,
+    1 -> CarrierOrderAction.CollectAll,
+    2 -> CarrierOrderAction.DropAll,
+    3 -> CarrierOrderAction.Collect,
+    4 -> CarrierOrderAction.Drop,
+    5 -> CarrierOrderAction.CollectAllBut,
+    6 -> CarrierOrderAction.DropAllBut,
+    7 -> CarrierOrderAction.Garrison
   )
 }
