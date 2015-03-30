@@ -28,14 +28,14 @@ object CarrierOrder {
 
 case class CarrierOrder(
   delay: Int,
-  planetId: Int,
+  starId: Int,
   action: CarrierOrderAction,
   ships: Int
 )
 
 object CarrierOrderAction extends Enumeration {
   type CarrierOrderAction = Value
-  val doNothing, collectAll, collect, collectAllBut, dropAll, drop, dropAllBut, garrison = Value
+  val DoNothing, CollectAll, Collect, CollectAllBut, DropAll, Drop, DropAllBut, Garrison = Value
 
   implicit val fmt: Format[CarrierOrderAction] = new Format[CarrierOrderAction] {
     def reads(json: JsValue): JsResult[CarrierOrderAction] = Try(CarrierOrderAction.withName(json.as[String])) match {

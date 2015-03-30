@@ -483,20 +483,20 @@ These values are available for the `action` parameter
 
 Action ID | Include `ships` parameter
 --- | ---
-doNothing | No
-collectAll | No
-collect | Yes
-collectAllBut | Yes
-dropAll | No
-drop | Yes
-dropAllBut | Yes
-garrison | Yes
+DoNothing | No
+CollectAll | No
+DropAll | No
+Collect | Yes
+Drop | Yes
+CollectAllBut | Yes
+DropAllBut | Yes
+Garrison | Yes
 
 #### Example Request
 ```json
 {
   "starId": 33,
-  "action": "collectAllBut"
+  "action": "CollectAllBut"
   "ships": 12
 }
 ```
@@ -506,7 +506,7 @@ garrison | Yes
 {
   "result": {
     "starId": 33,
-    "action": "collectAllBut"
+    "action": "CollectAllBut"
     "ships": 12,
     "delay": 0
   }

@@ -3,6 +3,7 @@ package sdk
 import play.api.libs.json._
 import sdk.http.impl.PlayWebService
 import sdk.http.{RequestHolder, Response, WebService}
+import sdk.model.CarrierOrderAction.CarrierOrderAction
 import sdk.model._
 import sdk.tokenService.TokenService
 import sdk.tokenService.impl.TokenServiceImpl
@@ -55,6 +56,24 @@ object NPClient {
     }
     authedHolder.post(data)
   }
+
+  private def postFormDataAndCheckForError(url: String, data: Map[String, Seq[String]], oCookie: Option[AuthCookie])(implicit webServiceProvider: WebService, ec: ExecutionContext): Future[Either[String, JsValue]] = {
+    postFormData(url, data, oCookie).map { resp =>
+      if (resp.status != 200)
+        Left("Unexpected status code from the game: "+resp.status)
+      else parseErrorOrElse(resp.json, resp.json)
+    }
+  }
+
+  private def parseErrorOrElse[A](jsResponse: JsValue, orElse: => A): Either[String, A] =
+    if ((jsResponse \ "event").asOpt[String] == Some("order:error")) Left((jsResponse \ "report").as[String])
+    else Right(orElse)
+
+  private def parseOrError[A](jsResponse: JsValue)(implicit fjs: Reads[A]): Either[String, A] =
+    (jsResponse \ "report").validate[A] match {
+      case JsSuccess(x, _) => Right(x)
+      case JsError(parseError) => Left("Unknown response parse error. ParseError: "+parseError.flatMap(_._2).map(_.message) +"; Data: "+jsResponse.toString)
+    }
 }
 
 class NPClient(token: AuthToken)(implicit webServiceProvider: WebService = PlayWebService, tokenServiceProvider: TokenService = TokenServiceImpl) {
@@ -110,13 +129,52 @@ class NPClient(token: AuthToken)(implicit webServiceProvider: WebService = PlayW
         "game_number" -> Seq(gameId.toString)
       )
 
-      postFormData(orderEndpointUrl, data, Some(cookie)).map { response =>
-        parseOrError[Carrier](response.json)
+      postFormDataAndCheckForError(orderEndpointUrl, data, Some(cookie)).map {
+        case Right(jsCarrier) => parseOrError[Carrier](jsCarrier)
+        case Left(e) => Left(e)
       }
     }
   }
 
-  def submitTurn(gameId: Long)(implicit ec: ExecutionContext): Future[Unit] = {
+  def issueOrders(gameId: Long, carrierId: Int, orders: Seq[CarrierOrder])(implicit ec: ExecutionContext): Future[Either[String, Unit]] = {
+    tokenServiceProvider.lookupCookie(token).flatMap { cookie =>
+      def getActionId(action: CarrierOrderAction): Int = action match {
+        case CarrierOrderAction.DoNothing => 0
+        case CarrierOrderAction.CollectAll => 1
+        case CarrierOrderAction.DropAll => 2
+        case CarrierOrderAction.Collect => 3
+        case CarrierOrderAction.Drop => 4
+        case CarrierOrderAction.CollectAllBut => 5
+        case CarrierOrderAction.DropAllBut => 6
+        case CarrierOrderAction.Garrison => 7
+      }
+
+      def buildOrderString: String = {
+        val sDelay = orders.map(_.delay).mkString("_")
+        val sStarId = orders.map(_.starId).mkString("_")
+        val sAction = orders.map(_.action).map(getActionId).mkString("_")
+        val sShips = orders.map(_.ships).mkString("_")
+
+        Seq(sDelay, sStarId, sAction, sShips).mkString(",")
+      }
+
+      val sOrder = Seq("add_fleet_orders", carrierId, buildOrderString, 0).mkString(",")
+
+      val data = Map(
+        "type" -> Seq("order"),
+        "order" -> Seq(sOrder),
+        "version" -> Seq("7"),
+        "game_number" -> Seq(gameId.toString)
+      )
+
+      postFormDataAndCheckForError(orderEndpointUrl, data, Some(cookie)) map {
+        case Right(_) => Right(())
+        case Left(e) => Left(e)
+      }
+    }
+  }
+
+  def submitTurn(gameId: Long)(implicit ec: ExecutionContext): Future[Either[String, Unit]] = {
     tokenServiceProvider.lookupCookie(token).flatMap { cookie =>
       val data = Map(
         "type" -> Seq("order"),
@@ -125,17 +183,10 @@ class NPClient(token: AuthToken)(implicit webServiceProvider: WebService = PlayW
         "game_number" -> Seq(gameId.toString)
       )
 
-      postFormData(orderEndpointUrl, data, Some(cookie))
-    }.map { _ =>
-      () // Drop the response and return Unit
-    }
-  }
-
-  private def parseOrError[A](jsResponse: JsValue)(implicit fjs: Reads[A]): Either[String, A] = {
-    (jsResponse \ "report").validate[A] match {
-      case JsSuccess(x, _) => Right(x)
-      case _: JsError if (jsResponse \ "event").asOpt[String] == Some("order:error") => Left((jsResponse \ "report").as[String])
-      case JsError(parseError) => Left("Unknown response parse error. ParseError: "+parseError.flatMap(_._2).map(_.message) +"; Data: "+jsResponse.toString)
+      postFormDataAndCheckForError(orderEndpointUrl, data, Some(cookie)) map {
+        case Right(_) => Right(())
+        case Left(e) => Left(e)
+      }
     }
   }
 

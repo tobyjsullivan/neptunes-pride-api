@@ -14,8 +14,9 @@ class PlayRequestHolder(holder: WSRequestHolder) extends RequestHolder {
       new PlayResponse(resp)
     }
 
-  def post(body: Map[String, Seq[String]])(implicit ec: ExecutionContext): Future[Response] =
+  def post(body: Map[String, Seq[String]])(implicit ec: ExecutionContext): Future[Response] = {
     holder.post(body) map { resp =>
       new PlayResponse(resp)
     }
+  }
 }
